@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Xcode / Swift
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+.swiftpm/
+Packages/
+*.resolved
+
+# Secrets / config (only the anon key ever ships in-app; everything else stays out)
+*.xcconfig
+Secrets.plist
+.env
+.env.local
+
+# Supabase local
+supabase/.branches
+supabase/.temp
