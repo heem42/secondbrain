@@ -7,6 +7,7 @@ import { ListsModule } from './lists/lists.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TagsModule } from './tags/tags.module';
 import { TasksModule } from './tasks/tasks.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TasksModule } from './tasks/tasks.module';
     PrismaModule,
     AccessModule,
     AuthModule,
+    UsersModule,
     ListsModule,
     TasksModule,
     TagsModule,
