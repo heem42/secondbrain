@@ -48,10 +48,41 @@ struct CreateTaskBody: Encodable {
     var dueAt: Date?
 }
 
+/// PATCH body. `dueAt`/`remindAt` are double-optional so we can distinguish "leave
+/// unchanged" (outer nil → omitted) from "clear it" (`.some(nil)` → JSON null, which
+/// the server maps to NULL). Everything else omits when nil (field-level updates).
 struct UpdateTaskBody: Encodable {
-    var title: String?
-    var notes: String?
-    var status: TaskStatus?
-    var priority: TaskPriority?
-    var dueAt: Date?
+    var title: String? = nil
+    var notes: String? = nil
+    var status: TaskStatus? = nil
+    var priority: TaskPriority? = nil
+    var dueAt: Date?? = nil
+    var remindAt: Date?? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case title, notes, status, priority, dueAt, remindAt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encodeIfPresent(notes, forKey: .notes)
+        try c.encodeIfPresent(status, forKey: .status)
+        try c.encodeIfPresent(priority, forKey: .priority)
+        try encodeNullable(dueAt, forKey: .dueAt, into: &c)
+        try encodeNullable(remindAt, forKey: .remindAt, into: &c)
+    }
+
+    private func encodeNullable(
+        _ value: Date??,
+        forKey key: CodingKeys,
+        into container: inout KeyedEncodingContainer<CodingKeys>
+    ) throws {
+        guard let inner = value else { return }   // outer nil → omit
+        if let date = inner {
+            try container.encode(date, forKey: key)
+        } else {
+            try container.encodeNil(forKey: key)   // explicit JSON null → clear
+        }
+    }
 }

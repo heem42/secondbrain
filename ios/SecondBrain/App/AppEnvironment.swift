@@ -7,6 +7,7 @@ final class AppEnvironment {
     let db: AppDatabase
     let api: ApiClient
     let auth: AuthService
+    let notifications: NotificationService
     let listRepository: TaskListRepository
     let taskRepository: TaskRepository
     let sync: SyncService
@@ -17,14 +18,18 @@ final class AppEnvironment {
         let auth = AuthService(api: api)
         api.tokenProvider = auth   // wire the JWT provider (weak ref inside ApiClient)
 
+        let notifications = NotificationService()
         let listRepository = TaskListRepository(db: db)
-        let taskRepository = TaskRepository(db: db, api: api)
+        let taskRepository = TaskRepository(db: db, api: api, notifications: notifications)
 
         self.api = api
         self.auth = auth
+        self.notifications = notifications
         self.listRepository = listRepository
         self.taskRepository = taskRepository
-        self.sync = SyncService(api: api, lists: listRepository, tasks: taskRepository)
+        self.sync = SyncService(
+            api: api, lists: listRepository, tasks: taskRepository, notifications: notifications
+        )
     }
 
     /// Real app store. Falls back to an in-memory store if the disk store can't open,
