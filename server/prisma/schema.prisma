@@ -1,0 +1,238 @@
+// Second Brain — Prisma schema (ARCHITECTURE.md §5).
+// Postgres is the schema of record; the iOS GRDB store mirrors these tables (minus password_hash).
+// Ported from supabase/migrations/20260703134812_init_schema.sql. Differences from the Supabase
+// design: auth.users + profiles are folded into one `users` table (we own auth now), and the
+// PowerSync denormalized list_id columns are dropped (no PowerSync in this stack).
+//
+// Conventions (§11): client-generatable UUIDs, updated_at maintained on every mutable table
+// (Prisma @updatedAt) for eventual last-write-wins, created_at on every table.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+enum TaskStatus {
+  todo
+  in_progress
+  done
+
+  @@map("task_status")
+}
+
+enum TaskPriority {
+  none
+  low
+  medium
+  high
+
+  @@map("task_priority")
+}
+
+enum GeoTrigger {
+  on_enter
+  on_exit
+
+  @@map("geo_trigger")
+}
+
+enum MemberRole {
+  owner
+  editor
+  viewer
+
+  @@map("member_role")
+}
+
+// ---------------------------------------------------------------------------
+// users  (auth identity + profile; replaces Supabase auth.users + profiles)
+// ---------------------------------------------------------------------------
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String?  @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  listGroups     ListGroup[]
+  ownedLists     TaskList[]     @relation("ListOwner")
+  memberships    ListMember[]
+  createdTasks   Task[]         @relation("TaskCreator")
+  tags           Tag[]
+  refreshTokens  RefreshToken[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// refresh_tokens  (server-side refresh-token store; supports rotation/revocation — §12)
+// ---------------------------------------------------------------------------
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// list_groups  (folders that group Lists; private to owner)
+// ---------------------------------------------------------------------------
+model ListGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  name      String
+  sortOrder Float    @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  lists TaskList[]
+
+  @@index([ownerId])
+  @@map("list_groups")
+}
+
+// ---------------------------------------------------------------------------
+// lists  (Swift type: TaskList — TickTick "list"; shareable). Table: lists.
+// ---------------------------------------------------------------------------
+model TaskList {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  groupId   String?  @map("group_id") @db.Uuid
+  name      String
+  color     String?
+  isInbox   Boolean  @default(false) @map("is_inbox")
+  sortOrder Float    @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner   User         @relation("ListOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  group   ListGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  members ListMember[]
+  tasks   Task[]
+
+  @@index([ownerId])
+  @@index([groupId])
+  // exactly one Inbox per owner (partial unique index added in migration SQL)
+  @@map("lists")
+}
+
+// ---------------------------------------------------------------------------
+// list_members  (sharing / collaboration)
+// ---------------------------------------------------------------------------
+model ListMember {
+  listId    String     @map("list_id") @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  role      MemberRole @default(viewer)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  list TaskList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([listId, userId])
+  @@index([userId])
+  @@map("list_members")
+}
+
+// ---------------------------------------------------------------------------
+// tasks
+// ---------------------------------------------------------------------------
+model Task {
+  id             String       @id @default(uuid()) @db.Uuid
+  listId         String       @map("list_id") @db.Uuid
+  createdBy      String?      @map("created_by") @db.Uuid
+  title          String
+  notes          String?
+  status         TaskStatus   @default(todo)
+  priority       TaskPriority @default(none)
+  dueAt          DateTime?    @map("due_at") @db.Timestamptz(6)
+  remindAt       DateTime?    @map("remind_at") @db.Timestamptz(6)
+  recurrenceRule String?      @map("recurrence_rule") // RFC 5545 RRULE, parsed client-side
+  geoLat         Float?       @map("geo_lat")
+  geoLng         Float?       @map("geo_lng")
+  geoRadius      Float?       @map("geo_radius")
+  geoTrigger     GeoTrigger?  @map("geo_trigger")
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(6)
+  sortOrder      Float        @default(0) @map("sort_order")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  list     TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  creator  User?     @relation("TaskCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  subtasks Subtask[]
+  taskTags TaskTag[]
+
+  @@index([listId])
+  @@index([dueAt])
+  @@index([status])
+  @@map("tasks")
+}
+
+// ---------------------------------------------------------------------------
+// subtasks  (checklist items under a task)
+// ---------------------------------------------------------------------------
+model Subtask {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  title     String
+  isDone    Boolean  @default(false) @map("is_done")
+  sortOrder Float    @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+// ---------------------------------------------------------------------------
+// tags  (cross-cutting labels; private to owner)
+// ---------------------------------------------------------------------------
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  name      String
+  color     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  taskTags TaskTag[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@map("tags")
+}
+
+// ---------------------------------------------------------------------------
+// task_tags  (many-to-many)
+// ---------------------------------------------------------------------------
+model TaskTag {
+  taskId String @map("task_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@index([tagId])
+  @@map("task_tags")
+}

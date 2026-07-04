@@ -1,0 +1,17 @@
+# Dependencies
+/node_modules
+
+# Build output
+/dist
+
+# Env — never commit real secrets (ARCHITECTURE.md §11)
+.env
+.env.local
+.env.*.local
+
+# Prisma
+/prisma/*.db
+
+# Logs / misc
+*.log
+.DS_Store
