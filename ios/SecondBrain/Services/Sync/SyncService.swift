@@ -18,11 +18,18 @@ final class SyncService {
     @ObservationIgnored private let api: ApiClient
     @ObservationIgnored private let lists: TaskListRepository
     @ObservationIgnored private let tasks: TaskRepository
+    @ObservationIgnored private let notifications: NotificationService
 
-    init(api: ApiClient, lists: TaskListRepository, tasks: TaskRepository) {
+    init(
+        api: ApiClient,
+        lists: TaskListRepository,
+        tasks: TaskRepository,
+        notifications: NotificationService
+    ) {
         self.api = api
         self.lists = lists
         self.tasks = tasks
+        self.notifications = notifications
     }
 
     /// Pull everything the user can see into the local store.
@@ -34,10 +41,15 @@ final class SyncService {
 
             // Pull tasks per list. Fine for the skeleton; a `changes-since` endpoint
             // will replace this fan-out later (§8/§10).
+            var allTasks: [TaskItem] = []
             for list in remoteLists {
                 let remoteTasks = try await api.fetchTasks(listId: list.id)
                 try await tasks.upsert(remoteTasks)
+                allTasks.append(contentsOf: remoteTasks)
             }
+
+            // Keep the OS reminder schedule derived from what we just pulled (§7).
+            await notifications.reconcileAll(allTasks)
             state = .idle
         } catch {
             state = .failed((error as? ApiError)?.localizedDescription ?? error.localizedDescription)

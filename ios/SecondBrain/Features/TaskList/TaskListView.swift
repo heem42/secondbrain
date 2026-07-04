@@ -44,8 +44,8 @@ struct TaskListView: View {
         .onAppear { model.start() }
         .onDisappear { model.stop() }
         .sheet(item: $editing) { task in
-            EditTaskView(task: task) { title, priority in
-                await model.save(task, title: title, priority: priority)
+            EditTaskView(task: task) { title, priority, remindAt in
+                await model.save(task, title: title, priority: priority, remindAt: remindAt)
             }
         }
         .alert(
@@ -79,7 +79,15 @@ private struct TaskRow: View {
                 Text(task.title)
                     .strikethrough(task.isDone)
                     .foregroundStyle(task.isDone ? .secondary : .primary)
-                if let due = task.dueAt {
+                if let remind = task.remindAt {
+                    Label {
+                        Text(remind, format: .dateTime.month().day().hour().minute())
+                    } icon: {
+                        Image(systemName: "bell.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                } else if let due = task.dueAt {
                     Text(due, style: .date).font(.caption).foregroundStyle(.secondary)
                 }
             }

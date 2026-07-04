@@ -44,7 +44,10 @@ struct ListsView: View {
                 }
             }
             .onAppear { model.start() }
-            .task { await env.sync.pull() }
+            .task {
+                await env.notifications.requestAuthorization()
+                await env.sync.pull()
+            }
         }
     }
 

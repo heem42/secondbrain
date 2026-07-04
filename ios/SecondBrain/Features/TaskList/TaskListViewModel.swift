@@ -52,10 +52,12 @@ final class TaskListViewModel {
         await run { try await repository.setDone(task, done: !task.isDone) }
     }
 
-    func save(_ task: TaskItem, title: String, priority: TaskPriority) async {
+    func save(_ task: TaskItem, title: String, priority: TaskPriority, remindAt: Date?) async {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        await run { try await repository.update(task, title: trimmed, priority: priority) }
+        await run {
+            try await repository.update(task, title: trimmed, priority: priority, remindAt: remindAt)
+        }
     }
 
     func delete(_ task: TaskItem) async {

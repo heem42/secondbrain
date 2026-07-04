@@ -11,6 +11,7 @@ import GRDB
 struct TaskRepository {
     let db: AppDatabase
     let api: ApiClient
+    let notifications: NotificationService
 
     // MARK: Reads (UI source of truth)
 
@@ -57,6 +58,7 @@ struct TaskRepository {
             CreateTaskBody(id: task.id, listId: listId, title: title, priority: priority)
         )
         try await upsert([saved])  // reconcile
+        await notifications.reconcile(for: saved)
     }
 
     func setDone(_ task: TaskItem, done: Bool) async throws {
@@ -68,24 +70,34 @@ struct TaskRepository {
         // The server derives completedAt from the status change.
         let saved = try await api.updateTask(id: task.id, UpdateTaskBody(status: updated.status))
         try await upsert([saved])
+        await notifications.reconcile(for: saved)   // completing cancels the reminder
     }
 
-    func update(_ task: TaskItem, title: String, priority: TaskPriority) async throws {
+    func update(
+        _ task: TaskItem,
+        title: String,
+        priority: TaskPriority,
+        remindAt: Date?
+    ) async throws {
         var updated = task
         updated.title = title
         updated.priority = priority
+        updated.remindAt = remindAt
         updated.updatedAt = Date()
         try await upsert([updated])
         let saved = try await api.updateTask(
-            id: task.id, UpdateTaskBody(title: title, priority: priority)
+            id: task.id,
+            UpdateTaskBody(title: title, priority: priority, remindAt: .some(remindAt))
         )
         try await upsert([saved])
+        await notifications.reconcile(for: saved)   // schedule/clear the reminder
     }
 
     func delete(_ task: TaskItem) async throws {
         try await db.writer.write { db in
             _ = try TaskItem.deleteOne(db, key: task.id)
         }
+        await notifications.cancel(task.id)
         try await api.deleteTask(id: task.id)
     }
 }
