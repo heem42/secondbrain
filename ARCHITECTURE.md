@@ -6,7 +6,8 @@ alarms/geofences) with a pragmatic **online-first** sync model to start. This do
 **north-star architecture** — it describes the target design. Sections marked _(planned)_ are the
 destination; keep this file in sync as code lands.
 
-> This is a monorepo: the iOS app lives in `ios/`, the backend in `server/` (see §9).
+> This is a monorepo: the iOS app lives in `ios/`, the backend in `server/`, and a web client in
+> `web/` (see §9). iOS is the primary, offline-capable app; web is an online-first companion.
 
 ---
 
@@ -58,6 +59,11 @@ These are settled decisions. Change them deliberately.
 6. **Authorization lives in the API.** The NestJS layer enforces all access (per-user + shared-list
    roles). The client is never trusted. `updated_at` is maintained everywhere to support
    last-write-wins when the sync engine lands.
+7. **Web is an online-first companion, not a second local-first app.** The web client (`web/`) is
+   the same API's browser view for capture/organize/triage. It has **no local store** — server
+   state lives in a query cache (TanStack Query), and it calls the API directly (§8). Native-only
+   features (on-device reminders, geofences) are intentionally **out of scope for web**. This keeps
+   the local-first machinery (§3, §7) an iOS concern and avoids reimplementing sync in the browser.
 
 ---
 
@@ -112,13 +118,24 @@ upserts into the local store.
 
 | Layer            | Choice                              | Notes                                             |
 | ---------------- | ----------------------------------- | ------------------------------------------------- |
-| Runtime / lang   | **Node + TypeScript**               | Shared language with a possible future web client.|
+| Runtime / lang   | **Node + TypeScript**               | Shared language with the web client (`web/`).     |
 | Framework        | **NestJS**                          | Structured modules, DI, guards, pipes.            |
 | Database         | **Postgres**                        | Schema of record (§5). Hosted on Neon/Railway/Fly or local Docker. |
 | ORM / migrations | **Prisma**                          | Type-safe client + versioned migrations.          |
 | Auth             | **JWT (access + refresh)**          | Passport + `bcrypt` password hashing.             |
 | Validation       | **class-validator / DTOs**          | Validate every request body.                      |
 | Push (later)     | **APNs** from the API               | For shared-list activity while the app is closed. |
+
+### Web app (`web/`)
+
+| Layer            | Choice                              | Notes                                             |
+| ---------------- | ----------------------------------- | ------------------------------------------------- |
+| Language / build | **TypeScript + Vite**               | SPA; pinned to Vite 6 (Rollup) for the local Node.|
+| UI               | **React**                           | Function components + hooks.                       |
+| Server state     | **TanStack Query**                  | Cache + mutations; the web analog of §7's repos.  |
+| Networking       | **fetch** + a thin client           | `credentials: 'include'`; 401 → refresh → retry.  |
+| Auth (browser)   | **httpOnly refresh cookie**         | Access token in memory only; refresh never in JS. |
+| Local store      | **none** (online-first)             | No offline store — see §2 decision 7, §8.         |
 
 ---
 
@@ -183,6 +200,10 @@ and never on the client. The access model:
 
 - Authenticated requests carry a **JWT access token**; a refresh token mints new access tokens.
   Passwords are hashed with `bcrypt`.
+- **Token delivery is per-client.** iOS receives both tokens in the JSON body (Keychain). The web
+  client receives the refresh token as an **httpOnly / SameSite cookie** and keeps only the access
+  token in memory, so no token is exposed to JS. `POST /auth/refresh` reads the cookie or falls
+  back to the body — one endpoint, both clients. CORS is restricted to the configured web origin.
 - A user can access a `list` if they are the `owner_id` **or** appear in `list_members` for that
   list.
 - `tasks` / `subtasks` / `task_tags` inherit access from their parent `list`.
@@ -235,6 +256,11 @@ Services (cross-cutting)
 - **Conflict handling:** minimal for now (last writer to the server wins). Because a task app's
   edits rarely truly collide, this is acceptable for a single user across devices.
 
+**Web client — online-first, no local store.** The above local-first flow is an **iOS** concern.
+The web app (`web/`) reads and writes straight through the API, with **TanStack Query** as its
+server-state cache (queries + mutation invalidation) instead of GRDB. It has no offline mode and
+does not participate in the sync engine (§2 decision 7).
+
 **Later _(planned)_ — a real sync engine:**
 - A scoped, custom **last-write-wins** protocol: `GET /changes?since=` pull + push of locally
   "dirty" rows, keyed on `updated_at`, with **soft-delete tombstones** so deletes propagate.
@@ -274,17 +300,25 @@ SecondBrain-iOS/
 │       ├── DesignSystem/                # reusable SwiftUI components, colors, type
 │       └── Resources/                   # assets, localizable strings
 │
-└── server/                             # the NestJS API
-    ├── prisma/
-    │   ├── schema.prisma                # models mirroring §5
-    │   └── migrations/                  # versioned SQL
+├── server/                             # the NestJS API
+│   ├── prisma/
+│   │   ├── schema.prisma                # models mirroring §5
+│   │   └── migrations/                  # versioned SQL
+│   └── src/
+│       ├── auth/                        # JWT + refresh; JSON body (iOS) & cookie (web)
+│       ├── users/                       # GET /users/me
+│       ├── lists/                       # lists + list_members (sharing)
+│       ├── tasks/                       # tasks + subtasks
+│       ├── tags/
+│       ├── access/                      # API-layer authorization helpers (§6)
+│       └── common/                      # DTOs, pipes, decorators
+│
+└── web/                               # the React SPA (online-first companion, §2.7)
+    ├── index.html
     └── src/
-        ├── auth/                        # JWT, guards, strategies
-        ├── users/
-        ├── lists/                       # lists + list_members (sharing)
-        ├── tasks/                       # tasks + subtasks
-        ├── tags/
-        └── common/                      # DTOs, pipes, policy helpers
+        ├── api/                        # fetch client, types, TanStack Query hooks
+        ├── auth/                       # AuthContext (cookie-based session restore)
+        └── pages/                      # LoginPage, AppPage
 ```
 
 > The former `supabase/` directory (Postgres schema + RLS + PowerSync sync rules) is retained in
@@ -312,7 +346,8 @@ slices).
 10. **Custom sync engine** — LWW `changes-since` protocol + tombstones + background pulls (§8).
 11. **Sharing / collaboration** — invite users to a list; role-based access; (later) real-time.
 12. **Recurrence** — repeating tasks.
-13. **Nice-to-haves** — drag reorder, widgets, focus timer, calendar view, Android/web client.
+13. **Nice-to-haves** — drag reorder, widgets, focus timer, calendar view, Android client.
+    _(A web companion — `web/`, online-first triage — already shipped ahead of this list; §2.7.)_
 
 ---
 
@@ -334,7 +369,8 @@ slices).
 ## 12. Open Questions / To Decide
 
 - Postgres hosting for dev/prod (Neon vs Railway vs Fly vs local Docker).
-- Refresh-token strategy — rotation + revocation storage (DB table vs stateless).
+- ~~Refresh-token strategy~~ — **decided:** DB-backed `refresh_tokens` table with rotation +
+  revocation; web uses an httpOnly cookie, iOS the JSON body (§6).
 - Recurrence representation — full RRULE vs. a simpler custom JSON shape.
 - Shape of the `changes-since` sync API before building the sync engine (§8/§10 item 10).
 - Push (remote) notifications for shared-list activity — APNs from the NestJS API (local
