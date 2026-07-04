@@ -57,9 +57,21 @@ final class ApiClient {
         try await send("tasks?listId=\(listId)", method: "GET", body: Optional<Empty>.none)
     }
 
+    func createTask(_ body: CreateTaskBody) async throws -> TaskItem {
+        try await send("tasks", method: "POST", body: body)
+    }
+
+    func updateTask(id: String, _ body: UpdateTaskBody) async throws -> TaskItem {
+        try await send("tasks/\(id)", method: "PATCH", body: body)
+    }
+
+    func deleteTask(id: String) async throws {
+        let _: Empty = try await send("tasks/\(id)", method: "DELETE", body: Optional<Empty>.none)
+    }
+
     // MARK: Core
 
-    private struct Empty: Encodable {}
+    private struct Empty: Codable {}
 
     private func send<Body: Encodable, Response: Decodable>(
         _ path: String,

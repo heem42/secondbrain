@@ -34,3 +34,24 @@ struct TokenPair: Codable {
     let accessToken: String
     let refreshToken: String
 }
+
+// Task mutations. Only the fields the server's CreateTaskDto/UpdateTaskDto accept —
+// nil optionals are omitted by Codable, so an update sends only what changed (§11:
+// prefer field-level updates). IDs are client-generated so rows can be made offline.
+
+struct CreateTaskBody: Encodable {
+    let id: String
+    let listId: String
+    let title: String
+    var notes: String?
+    var priority: TaskPriority?
+    var dueAt: Date?
+}
+
+struct UpdateTaskBody: Encodable {
+    var title: String?
+    var notes: String?
+    var status: TaskStatus?
+    var priority: TaskPriority?
+    var dueAt: Date?
+}
