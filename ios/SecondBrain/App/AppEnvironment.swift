@@ -18,7 +18,7 @@ final class AppEnvironment {
         api.tokenProvider = auth   // wire the JWT provider (weak ref inside ApiClient)
 
         let listRepository = TaskListRepository(db: db)
-        let taskRepository = TaskRepository(db: db)
+        let taskRepository = TaskRepository(db: db, api: api)
 
         self.api = api
         self.auth = auth
