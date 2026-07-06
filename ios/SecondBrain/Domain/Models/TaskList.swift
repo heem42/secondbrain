@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-/// A TickTick-style list that groups tasks (ARCHITECTURE.md §1). Named `TaskList`
+/// A named list that groups tasks (ARCHITECTURE.md §1). Named `TaskList`
 /// to avoid clashing with SwiftUI's `List`; stored in the `lists` table.
 ///
 /// The struct doubles as the API-decodable shape and the GRDB record — the server
