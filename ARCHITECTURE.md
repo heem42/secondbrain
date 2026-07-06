@@ -1,10 +1,10 @@
 # Second Brain — Project Architecture
 
-A native iOS task & productivity app inspired by [TickTick](https://ticktick.com), backed by a
-**custom NestJS + Postgres** API. Built **offline-capable** (a local on-device store + on-device
-alarms/geofences) with a pragmatic **online-first** sync model to start. This document is the
-**north-star architecture** — it describes the target design. Sections marked _(planned)_ are the
-destination; keep this file in sync as code lands.
+A native iOS task & productivity app, backed by a **custom NestJS + Postgres** API. Built
+**offline-capable** (a local on-device store + on-device alarms/geofences) with a pragmatic
+**online-first** sync model to start. This document is the **north-star architecture** — it
+describes the target design. Sections marked _(planned)_ are the destination; keep this file in
+sync as code lands.
 
 > This is a monorepo: the iOS app lives in `ios/`, the backend in `server/`, and a web client in
 > `web/` (see §9). iOS is the primary, offline-capable app; web is an online-first companion.
@@ -15,7 +15,7 @@ destination; keep this file in sync as code lands.
 
 A "second brain" for capturing, organizing, and completing work — primarily used on iPhone,
 usable offline for its core loop, syncing across the user's devices and (eventually) shared with
-other people. TickTick is the reference for the initial feature set; the design is modular so
+other people. The feature set draws on established task managers, and the design is modular so
 features can be added, removed, or reshaped over time.
 
 ### Core concepts
@@ -24,7 +24,7 @@ features can be added, removed, or reshaped over time.
 | ------------- | --------------------------------------------------------------------- |
 | **Task**      | Atomic unit of work — title, notes, due date, priority, status.       |
 | **Subtask**   | A checklist item nested under a task.                                  |
-| **List**      | A named list that groups tasks (TickTick "lists"). Shareable. Swift type `TaskList` (avoids clashing with SwiftUI's `List`); table `lists`. |
+| **List**      | A named list that groups tasks. Shareable. Swift type `TaskList` (avoids clashing with SwiftUI's `List`); table `lists`. |
 | **Tag**       | A cross-cutting label; a task can have many.                          |
 | **Smart list**| Derived view (a computed list): Inbox, Today, Next 7 Days, Completed, Tag view. |
 | **Priority**  | None / Low / Medium / High.                                           |

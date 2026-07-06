@@ -109,7 +109,7 @@ model ListGroup {
 }
 
 // ---------------------------------------------------------------------------
-// lists  (Swift type: TaskList — TickTick "list"; shareable). Table: lists.
+// lists  (Swift type: TaskList — a shareable list of tasks). Table: lists.
 // ---------------------------------------------------------------------------
 model TaskList {
   id        String   @id @default(uuid()) @db.Uuid
