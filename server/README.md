@@ -9,10 +9,10 @@ shared-list authorization enforced in the API layer (see [ARCHITECTURE.md](../AR
 ```bash
 cd server
 npm install
-cp .env.example .env          # fill in DATABASE_URL + JWT secrets
-npm run prisma:generate       # generate the Prisma client
-npm run prisma:migrate        # apply migrations to your Postgres (needs a live DB)
-npm run start:dev             # http://localhost:3000/api
+cp .env.example .env
+npm run prisma:generate
+npm run prisma:migrate
+npm run start:dev
 ```
 
 No Postgres yet? Spin one up locally:

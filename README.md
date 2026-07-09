@@ -49,7 +49,7 @@ SecondBrain-iOS/
 
 ### 1. API (`server/`)
 
-Needs a Postgres database. The quickest local option is Docker:
+Start postgres database.
 
 ```bash
 docker run --name sb-postgres -e POSTGRES_PASSWORD=postgres \
@@ -61,10 +61,10 @@ Then:
 ```bash
 cd server
 npm install
-cp .env.example .env          # fill in DATABASE_URL + JWT secrets
+cp .env.example .env
 npm run prisma:generate
-npm run prisma:migrate        # apply the schema
-npm run start:dev             # http://localhost:3000/api
+npm run prisma:migrate
+npm run start:dev 
 ```
 
 See [server/README.md](server/README.md) for the full API surface and details.
@@ -74,7 +74,7 @@ See [server/README.md](server/README.md) for the full API surface and details.
 ```bash
 cd web
 npm install
-npm run dev                   # http://localhost:5173
+npm run dev
 ```
 
 The dev server proxies to the API at `http://localhost:3000/api` (override with
