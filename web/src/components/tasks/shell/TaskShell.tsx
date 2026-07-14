@@ -10,12 +10,12 @@ export function TaskShell({
 }: {
   list: TaskList;
   selectedTaskId: string | undefined;
-  onSelectTask: (taskId: string) => void;
+  onSelectTask: (taskId: string | undefined) => void;
 }) {
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   if (isMobile && selectedTaskId) {
-    return <MobileTaskView onBack={() => onSelectTask('')} />;
+    return <MobileTaskView onBack={() => onSelectTask(undefined)} />;
   }
 
   return (

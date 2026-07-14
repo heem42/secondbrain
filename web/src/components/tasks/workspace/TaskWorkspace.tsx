@@ -11,7 +11,7 @@ export function TaskWorkspace({
 }: {
   list: TaskList;
   selectedTaskId: string | undefined;
-  onSelectTask: (taskId: string) => void;
+  onSelectTask: (taskId: string | undefined) => void;
 }) {
   const tasksQuery = useTasks(list.id);
   const createTask = useCreateTask(list.id);
