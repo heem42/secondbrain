@@ -1,6 +1,18 @@
-import { TaskDetailSkeleton } from '@/components/tasks/detail/TaskDetailSkeleton';
+import { useTasks } from '@/api/hooks';
+import { TaskDetail } from '@/components/tasks/detail/TaskDetail';
 
-export function MobileTaskView({ onBack }: { onBack: () => void }) {
+export function MobileTaskView({
+  listId,
+  selectedTaskId,
+  onBack,
+}: {
+  listId: string;
+  selectedTaskId: string;
+  onBack: () => void;
+}) {
+  const tasksQuery = useTasks(listId);
+  const selectedTask = (tasksQuery.data ?? []).find((task) => task.id === selectedTaskId);
+
   return (
     <div className="mobile-task-page">
       <header className="mobile-task-head">
@@ -11,7 +23,7 @@ export function MobileTaskView({ onBack }: { onBack: () => void }) {
       </header>
 
       <main className="mobile-task-body">
-        <TaskDetailSkeleton />
+        {selectedTask ? <TaskDetail task={selectedTask} /> : <p className="muted">Loading task details…</p>}
       </main>
     </div>
   );

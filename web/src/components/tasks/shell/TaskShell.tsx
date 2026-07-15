@@ -15,7 +15,13 @@ export function TaskShell({
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   if (isMobile && selectedTaskId) {
-    return <MobileTaskView onBack={() => onSelectTask(undefined)} />;
+    return (
+      <MobileTaskView
+        listId={list.id}
+        selectedTaskId={selectedTaskId}
+        onBack={() => onSelectTask(undefined)}
+      />
+    );
   }
 
   return (
