@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useCreateTask, useTasks } from '@/api/hooks';
 import type { TaskList } from '@/api/types';
-import { TaskDetailSkeleton } from '@/components/tasks/detail/TaskDetailSkeleton';
+import { TaskDetail } from '@/components/tasks/detail/TaskDetail';
 import { TaskRow } from '@/components/tasks/workspace/TaskRow';
 
 export function TaskWorkspace({
@@ -66,7 +66,7 @@ export function TaskWorkspace({
       {selectedTaskId ? (
         <aside className="task-detail-pane" aria-label="Task detail">
           {selectedTask ? (
-            <TaskDetailSkeleton task={selectedTask} />
+            <TaskDetail task={selectedTask} />
           ) : (
             <p className="muted">Loading task details…</p>
           )}

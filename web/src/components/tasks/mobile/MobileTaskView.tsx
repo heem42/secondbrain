@@ -1,5 +1,5 @@
 import { useTasks } from '@/api/hooks';
-import { TaskDetailSkeleton } from '@/components/tasks/detail/TaskDetailSkeleton';
+import { TaskDetail } from '@/components/tasks/detail/TaskDetail';
 
 export function MobileTaskView({
   listId,
@@ -23,7 +23,7 @@ export function MobileTaskView({
       </header>
 
       <main className="mobile-task-body">
-        {selectedTask ? <TaskDetailSkeleton task={selectedTask} /> : <p className="muted">Loading task details…</p>}
+        {selectedTask ? <TaskDetail task={selectedTask} /> : <p className="muted">Loading task details…</p>}
       </main>
     </div>
   );

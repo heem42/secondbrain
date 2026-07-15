@@ -6,9 +6,9 @@ function formatDate(value: string | null) {
   return Number.isNaN(date.getTime()) ? 'No due date' : date.toLocaleString();
 }
 
-export function TaskDetailSkeleton({ task }: { task: Task }) {
+export function TaskDetail({ task }: { task: Task }) {
   return (
-    <div className="task-detail-skeleton task-detail-content">
+    <div className="task-detail task-detail-content">
       <div className="detail-title">{task.title}</div>
       <div className="detail-row">
         <span className="detail-label">Due date</span>
