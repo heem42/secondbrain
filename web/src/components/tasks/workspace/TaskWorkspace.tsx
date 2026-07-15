@@ -26,6 +26,7 @@ export function TaskWorkspace({
   }
 
   const tasks = tasksQuery.data ?? [];
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
 
   return (
     <div
@@ -64,7 +65,11 @@ export function TaskWorkspace({
 
       {selectedTaskId ? (
         <aside className="task-detail-pane" aria-label="Task detail">
-          <TaskDetailSkeleton />
+          {selectedTask ? (
+            <TaskDetailSkeleton task={selectedTask} />
+          ) : (
+            <p className="muted">Loading task details…</p>
+          )}
         </aside>
       ) : null}
     </div>

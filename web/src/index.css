@@ -319,6 +319,16 @@ input {
   display: grid;
   gap: 1rem;
 }
+.task-detail-content .detail-card,
+.task-detail-content .detail-line {
+  animation: none;
+  background: var(--bg);
+}
+.detail-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
 .detail-line,
 .detail-card {
   background: linear-gradient(90deg, rgba(113, 113, 122, 0.12), rgba(113, 113, 122, 0.22), rgba(113, 113, 122, 0.12));
@@ -349,11 +359,26 @@ input {
 .detail-value {
   width: 50%;
 }
+.detail-value-text {
+  color: var(--text);
+  font-size: 0.95rem;
+}
 .detail-card {
   min-height: 72px;
+  border: 1px solid var(--border);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
 }
 .detail-card-lg {
   min-height: 140px;
+}
+.detail-card-text {
+  color: var(--text);
+  line-height: 1.4;
+  text-transform: capitalize;
+  word-break: break-word;
 }
 .detail-grid {
   display: grid;
